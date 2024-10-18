@@ -1,6 +1,7 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+
 
 @dataclass
 class Video:
@@ -11,7 +12,7 @@ class Video:
     video_path: Path
     transcript_path: Path
 
-    
+
 @dataclass
 class Video_Segment:
     parent_video_id: str
@@ -26,4 +27,3 @@ class Video_Segment:
     mid_time_ms: float
     end_time_ms: float
     transcript: Optional[str] = None
-    
