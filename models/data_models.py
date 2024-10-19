@@ -4,17 +4,17 @@ from typing import Optional
 
 
 @dataclass
-class Video:
+class VideoData:
     video_id: str
     video_url: str
     title: str
     description: str
-    video_path: Path
-    transcript_path: Path
+    video_path: Optional[Path]
+    transcript_path: Optional[Path]
 
 
 @dataclass
-class Video_Segment:
+class VideoSegmentData:
     parent_video_id: str
     parent_video_path: Path
     parent_transcript_path: Path
@@ -26,4 +26,3 @@ class Video_Segment:
     start_time_ms: float
     mid_time_ms: float
     end_time_ms: float
-    transcript: Optional[str] = None
