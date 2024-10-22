@@ -4376,6 +4376,19 @@ files = [
 ]
 
 [[package]]
+name = "whisper"
+version = "1.1.10"
+description = "Fixed size round-robin style database"
+optional = false
+python-versions = "*"
+files = [
+    {file = "whisper-1.1.10.tar.gz", hash = "sha256:435b4fb843c4c752719bdf0511a652d5be710e9bb35ad9ebe3b133268ee31c44"},
+]
+
+[package.dependencies]
+six = "*"
+
+[[package]]
 name = "win32-setctime"
 version = "1.1.0"
 description = "A small Python utility to set file creation time on Windows"
@@ -4651,4 +4664,4 @@ test = ["pytest (>=8.1,<9.0)", "pytest-rerunfailures (>=14.0,<15.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "9953444634e4b50c15177702b086778ca22bbf6ccaf7ced50fe2ba127d939845"
+content-hash = "a6a786f438a717d857b9a0eacdb943202b6f3345a62feb0784e36a64b6662a18"

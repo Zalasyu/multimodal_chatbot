@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -9,8 +9,11 @@ class VideoData:
     video_url: str
     title: str
     description: str
-    video_path: Optional[Path]
-    transcript_path: Optional[Path]
+    language: str = field(init=False, default="en")
+    video_path: Path
+    audio_path: Path
+    transcript_path: Optional[Path] = field(init=False, default=None)
+    description_path: Optional[Path] = field(init=False, default=None)
 
 
 @dataclass
