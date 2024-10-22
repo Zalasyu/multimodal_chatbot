@@ -5,7 +5,8 @@ from handlers.no_speech_detected_handler import NoSpeechDetectedHandler
 from handlers.transcribe_video_handler import TranscribeVideoHandler
 from handlers.transcript_available_handler import TranscriptAvailableHandler
 from models.data_models import VideoData
-from services.video_audio_downloader import VideoAudioDownloader
+from services.audio_downloader import AudioDownloader
+from services.video_downloader import VideoDownloader
 from utils.logger import logger
 
 
@@ -22,12 +23,11 @@ class YouTubeScraper:
         self.description_download_path: Path = Path(base_download_path, f"descriptions/{medium}")
 
         # Services
-        self.video_audio_downloader = VideoAudioDownloader(
-            video_download_path=self.video_download_path, audio_download_path=self.audio_download_path
-        )
+        self.video_downloader = VideoDownloader(video_download_path=self.video_download_path)
+        self.audio_downloader = AudioDownloader(audio_download_path=self.audio_download_path)
 
         # Handlers
-        # self.handler_chain: TranscriptAvailableHandler = self._build_handler_chain()
+        self.handler_chain: TranscriptAvailableHandler = self._build_handler_chain()
 
     def _build_handler_chain(self) -> "TranscriptAvailableHandler":
         """
@@ -47,11 +47,10 @@ class YouTubeScraper:
         no_speech_detected_handler = NoSpeechDetectedHandler(video_description_path=self.description_download_path)
 
         # Build the handler chain
-        handler_chain = transcript_available_handler
-        handler_chain.set_next(transcribe_video_handler)
-        handler_chain.set_next(no_speech_detected_handler)
+        transcript_available_handler.set_next(handler=transcribe_video_handler)
+        transcribe_video_handler.set_next(handler=no_speech_detected_handler)
 
-        return handler_chain
+        return transcript_available_handler
 
     def process_video(self, video_url: str) -> VideoData:
         """
@@ -66,9 +65,13 @@ class YouTubeScraper:
         logger.info(f"Processing {video_url}")
 
         # Step 1: Download video and audio
-        video_data: VideoData = self.video_audio_downloader.download_video(video_url=video_url)
+        video_data: VideoData = self.video_downloader.download_video(video_url=video_url)
+
+        # Step 2: Download audio
+        self.audio_downloader.download_audio(video_url=video_url, video_data=video_data)
+        logger.info(f"The video data:\n{video_data}")
 
         # Step 2: Process the video through the handler chain
-        # video_data = self.handler_chain.handle(video_data=video_data)
+        video_data = self.handler_chain.handle(video_data=video_data)
 
         return video_data

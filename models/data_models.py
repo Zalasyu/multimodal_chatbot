@@ -11,7 +11,7 @@ class VideoData:
     description: str
     language: str = field(init=False, default="en")
     video_path: Path
-    audio_path: Path
+    audio_path: Optional[Path] = field(init=False, default=None)
     transcript_path: Optional[Path] = field(init=False, default=None)
     description_path: Optional[Path] = field(init=False, default=None)
 
