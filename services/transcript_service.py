@@ -60,10 +60,6 @@ class TranscriptService:
                             # Write the subtitle to a file as TXT
                             self._save_transcription(video_data=video_data, content=raw_text, ext="txt")
 
-                            # Verify if the subtitle file was downloaded
-                            if Path(self.transcript_download_path, f"{video_data.title}_{video_data.video_id}.vtt").exists():
-                                logger.debug(f"Subtitle file downloaded: {subtitle_file}")
-
                     video_data.transcript_path_vtt = Path(video_data.video_path).with_suffix(".vtt")
 
                     return video_data
@@ -100,14 +96,14 @@ class TranscriptService:
                 continue
 
             # If the line passes the above filters, add it to the cleaned_lines list
-            cleaned_lines.append(line)
+            cleaned_lines.append(line.strip())
 
         # Join the cleaned_lines list into a single string
         cleaned_text = " ".join(cleaned_lines).strip()
 
         return cleaned_text
 
-    def _save_transcription(self, video_data: VideoData, content: str, ext: str) -> None:
+    def _save_transcription(self, video_data: VideoData, content: str, ext: str) -> VideoData:
         """
         Saves the transcript to a file
 
@@ -115,9 +111,12 @@ class TranscriptService:
             video_data (VideoData): The video metadata
             content (str): The transcript
             ext (str): The extension of the transcript
+
+        Returns:
+            VideoData: The video metadata
         """
 
         with open(Path(self.transcript_download_path, f"{video_data.title}_{video_data.video_id}.{ext}"), "w") as f:
             f.write(content)
 
-        return
+        return video_data
