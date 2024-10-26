@@ -17,7 +17,6 @@ class TranscribeVideoHandler(VideoProcessingHandler):
         transcription = self.speech_to_text_service.transcribe_video(video_data=video_data)
 
         if transcription:
-            video_data.transcript_path = transcription.transcript_path
             return video_data
 
         logger.error(f"Failed to transcribe video: {video_data.video_path}")

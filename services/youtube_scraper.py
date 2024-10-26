@@ -74,4 +74,6 @@ class YouTubeScraper:
         # Step 2: Process the video through the handler chain
         video_data = self.handler_chain.handle(video_data=video_data)
 
+        # Step 3: Preprocess Videos for Multimodal RAG
+
         return video_data

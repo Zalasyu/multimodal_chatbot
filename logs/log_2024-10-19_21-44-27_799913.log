@@ -1,4 +1,0 @@
-2024-10-19T21:44:27.805340+0100 | INFO | __main__:main:8 - Application started
-2024-10-19T21:44:27.805701+0100 | INFO | services.youtube_scraper:process_video:27 - Processing https://www.youtube.com/watch?v=VPiJIQJfuF8
-2024-10-19T21:44:51.333090+0100 | INFO | services.video_downloader:download_video:35 - Downloaded How I Ranked #1 in 10 Hours with AI SEO 🤯
-2024-10-19T21:44:51.335351+0100 | ERROR | services.video_downloader:download_video:46 - 'VideoDownloader' object has no attribute 'transcript_download_path'

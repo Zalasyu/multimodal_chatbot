@@ -11,7 +11,7 @@ def main():
     base_download_path.mkdir(parents=True, exist_ok=True)
 
     scraper = YouTubeScraper(base_download_path=base_download_path)
-    scraper.process_video("https://www.youtube.com/watch?v=VPiJIQJfuF8")
+    scraper.process_video("https://www.youtube.com/watch?v=KLLgGg4tmYs")
 
     logger.info("Application ended")
 

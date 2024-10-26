@@ -43,13 +43,22 @@ class SpeechToTextService:
             results = self.model.transcribe(file_to_transcribe, **self.options)
             logger.info(f"Transcription for {video_data.title} was completed")
 
-            # Create the file path to save the transcription (Change the video path)
-            video_data.transcript_path = self._create_transcript_directory(
-                transcript_download_path=self.transcript_download_path, video_path=video_data.video_path
+            # Create the VTT file path
+            video_data.transcript_path_vtt = self._create_transcript_path(
+                transcript_download_path=self.transcript_download_path, video_path=video_data.video_path, ext="vtt"
+            )
+
+            # Create the text file path
+            video_data.transcript_path_text = self._create_transcript_path(
+                transcript_download_path=self.transcript_download_path, video_path=video_data.video_path, ext="txt"
             )
 
             # Save the transcription as a WebVTT file
-            self._save_transcription_as_vtt(segments=results["segments"], vtt_file_path=video_data.transcript_path)
+            self._save_transcription_as_vtt(segments=results["segments"], vtt_file_path=video_data.transcript_path_vtt)
+            logger.info(f"Transcription for {video_data.title} was saved")
+
+            # Save the transcription as a text file
+            self._save_transcription_as_text(segments=results["segments"], text_file_path=video_data.transcript_path_text)
             logger.info(f"Transcription for {video_data.title} was saved")
 
             return video_data
@@ -79,6 +88,24 @@ class SpeechToTextService:
 
         return vtt_file_path
 
+    def _save_transcription_as_text(self, segments: list, text_file_path: Path) -> Path:
+        """
+        Save the transcription segments as a text file.
+
+        Args:
+            segments (list): A list of transcription segments to be saved
+
+        Returns:
+            Path: The path to the saved text file
+        """
+        logger.debug("Saving transcription as text file")
+        with open(text_file_path, encoding="utf-8", mode="w") as f:
+            for segment in segments:
+                text = segment["text"].strip()
+                f.write(f"{text}\n")
+
+        return text_file_path
+
     def _format_timestamp(self, seconds: float) -> str:
         """
         Format a timestamp given in seconds as a string in the format:
@@ -96,7 +123,7 @@ class SpeechToTextService:
         milliseconds = int((seconds % 1) * 1000)
         return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
 
-    def _create_transcript_directory(self, transcript_download_path: Path, video_path: Path) -> Path:
+    def _create_transcript_path(self, transcript_download_path: Path, video_path: Path, ext: str) -> Path:
         """
         Uses the video path's file name suffix and the transcript download path to
         create a new file path for the transcript.
@@ -108,6 +135,6 @@ class SpeechToTextService:
         Returns:
             Path: _description_
         """
-        new_transcript_path = Path(transcript_download_path, video_path.name + ".vtt")
+        new_transcript_path = Path(transcript_download_path, video_path.name + "." + ext)
         logger.debug(f"Created transcript path: {new_transcript_path}")
         return new_transcript_path

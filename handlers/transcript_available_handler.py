@@ -27,7 +27,7 @@ class TranscriptAvailableHandler(VideoProcessingHandler):
         # Fetch the transcript if it does exist
         self.transcript_service.fetch_transcript(video_data=video_data)
 
-        if video_data.transcript_path:
+        if video_data.transcript_path_vtt or video_data.transcript_path_text:
             logger.info(f"Transcript is available for: {video_data.title}")
             return video_data
 
