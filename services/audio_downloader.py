@@ -46,8 +46,12 @@ class AudioDownloader:
                 # Sanitize the filename
                 sanitized_title = sanitize_filename(info_dict["title"], restricted=True)
 
-                # Create the video and audio paths
+                # Create the absolute audio path
                 audio_path = Path(self.audio_download_path, f"{sanitized_title}_{info_dict['id']}.mp3")
+                audio_path = audio_path.absolute()
+
+                # Create the directory if it doesn't exist
+                audio_path.parent.mkdir(parents=True, exist_ok=True)
 
                 # Update the video data
                 video_data.audio_path = audio_path

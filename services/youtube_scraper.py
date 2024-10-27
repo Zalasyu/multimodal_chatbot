@@ -80,7 +80,12 @@ class YouTubeScraper:
         video_data = self.handler_chain.handle(video_data=video_data)
 
         logger.info(f"The video data:\n{video_data}")
-        save_video_data(video_data=video_data, save_path=Path(f"../data/interim/video_data/{video_data.video_id}.json"))
+        save_video_data(
+            video_data=video_data,
+            save_path=Path(
+                f"/home/zalasyu/Documents/projects/multimodal_chatbot/data/interim/video_data/{video_data.video_id}.json"
+            ),
+        )
 
         # Step 3: Preprocess the video -> Extract frames and corresponding metadatas
         video_data = self.preprocessor.extract_frames_and_metadatas(video_data=video_data)

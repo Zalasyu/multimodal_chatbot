@@ -135,6 +135,6 @@ class SpeechToTextService:
         Returns:
             Path: _description_
         """
-        new_transcript_path = Path(transcript_download_path, video_path.name + "." + ext)
+        new_transcript_path = Path(transcript_download_path, video_path.stem + "." + ext)
         logger.debug(f"Created transcript path: {new_transcript_path}")
         return new_transcript_path

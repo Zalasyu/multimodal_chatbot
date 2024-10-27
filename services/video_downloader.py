@@ -45,8 +45,12 @@ class VideoDownloader:
                 # Sanitize the filename
                 sanitized_title = sanitize_filename(info_dict["title"], restricted=True)
 
-                # Create the video and audio paths
+                # Create the absolute path for the video
                 video_path = Path(self.video_download_path, f"{sanitized_title}_{info_dict['id']}.mp4")
+                video_path = video_path.resolve()
+
+                # Create the directory if it doesn't exist
+                video_path.parent.mkdir(parents=True, exist_ok=True)
 
                 return VideoData(
                     video_id=info_dict["id"],

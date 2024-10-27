@@ -10,8 +10,8 @@ from utils.logger import logger
 
 class TranscriptService:
 
-    def __init__(self, transcript_download_path: Path):
-        self.transcript_download_path = transcript_download_path
+    def __init__(self, transcript_download_path: Path) -> None:
+        self.transcript_download_path: Path = transcript_download_path
         logger.debug(f"TranscriptService initialized with transcript_download_path: {transcript_download_path}")
 
     def fetch_transcript(self, video_data: VideoData) -> VideoData:
@@ -54,13 +54,25 @@ class TranscriptService:
                             # Extract the text from the VTT file
                             raw_text: str = self._extract_text_from_vtt(vtt_content=captions)
 
-                            # Write the subtitle to a file as VTT
-                            self._save_transcription(video_data=video_data, content=captions, ext="vtt")
+                            # Create the VTT file path
+                            video_data.transcript_path_vtt = self._create_transcript_path(
+                                transcript_download_path=self.transcript_download_path,
+                                video_path=video_data.video_path,
+                                ext="vtt",
+                            )
 
-                            # Write the subtitle to a file as TXT
+                            # Create the text file path
+                            video_data.transcript_path_text = self._create_transcript_path(
+                                transcript_download_path=self.transcript_download_path,
+                                video_path=video_data.video_path,
+                                ext="txt",
+                            )
+
+                            # Save the text to the text file
                             self._save_transcription(video_data=video_data, content=raw_text, ext="txt")
 
-                    video_data.transcript_path_vtt = Path(video_data.video_path).with_suffix(".vtt")
+                            # Save the text to the VTT file
+                            self._save_transcription(video_data=video_data, content=raw_text, ext="vtt")
 
                     return video_data
 
@@ -120,3 +132,26 @@ class TranscriptService:
             f.write(content)
 
         return video_data
+
+    def _create_transcript_path(self, transcript_download_path: Path, video_path: Path, ext: str) -> Path:
+        """
+        Uses the video path's file name suffix and the transcript download path to
+        create a new file path for the transcript.
+
+        Args:
+            transcript_download_path (Path): _description_
+            video_path (Path): _description_
+
+        Returns:
+            Path: _description_
+        """
+
+        # Create absolute path for the transcript file
+        transcript_path = Path(transcript_download_path, video_path.stem + "." + ext)
+        transcript_path = transcript_path.resolve()
+
+        # Create the directory if it doesn't exist
+        transcript_path.parent.mkdir(parents=True, exist_ok=True)
+
+        logger.debug(f"Created transcript path: {transcript_path}")
+        return transcript_path

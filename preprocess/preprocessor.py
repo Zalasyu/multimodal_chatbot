@@ -26,7 +26,7 @@ class Preprocessor:
         video = cv2.VideoCapture(video_data.video_path)
         logger.debug(f"Displaying type: {type(video)}")
 
-        transcript: webvtt.WebVTT = webvtt.read(file=video_data.transcript_path_vtt)
+        transcript: webvtt.WebVTT = webvtt.read(file=str(video_data.transcript_path_vtt))
         logger.debug(f"Transcript type: {type(transcript)}")
 
         for idx, transcript_segment in enumerate(transcript):
