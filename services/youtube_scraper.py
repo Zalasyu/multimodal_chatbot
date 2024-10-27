@@ -8,6 +8,7 @@ from models.data_models import VideoData
 from preprocess.preprocessor import Preprocessor
 from services.audio_downloader import AudioDownloader
 from services.video_downloader import VideoDownloader
+from utils.helpers import save_video_data
 from utils.logger import logger
 
 
@@ -77,6 +78,9 @@ class YouTubeScraper:
 
         # Step 2: Process the video through the handler chain
         video_data = self.handler_chain.handle(video_data=video_data)
+
+        logger.info(f"The video data:\n{video_data}")
+        save_video_data(video_data=video_data, save_path=Path(f"../data/interim/video_data/{video_data.video_id}.json"))
 
         # Step 3: Preprocess the video -> Extract frames and corresponding metadatas
         video_data = self.preprocessor.extract_frames_and_metadatas(video_data=video_data)
