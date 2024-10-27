@@ -15,12 +15,14 @@ class VideoData:
     transcript_path_vtt: Optional[Path] = field(init=False, default=None)
     transcript_path_text: Optional[Path] = field(init=False, default=None)
     description_path: Optional[Path] = field(init=False, default=None)
+    processed_video_path: Optional[Path] = field(init=False, default=None)
 
 
 @dataclass
 class VideoSegmentData:
     parent_video_id: str
     parent_video_path: Path
+    parent_audio_path: Path
     parent_transcript_path: Path
     video_segment_id: int
     video_segment_path: Path

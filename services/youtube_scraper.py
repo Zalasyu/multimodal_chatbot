@@ -5,6 +5,7 @@ from handlers.no_speech_detected_handler import NoSpeechDetectedHandler
 from handlers.transcribe_video_handler import TranscribeVideoHandler
 from handlers.transcript_available_handler import TranscriptAvailableHandler
 from models.data_models import VideoData
+from preprocess.preprocessor import Preprocessor
 from services.audio_downloader import AudioDownloader
 from services.video_downloader import VideoDownloader
 from utils.logger import logger
@@ -25,6 +26,9 @@ class YouTubeScraper:
         # Services
         self.video_downloader = VideoDownloader(video_download_path=self.video_download_path)
         self.audio_downloader = AudioDownloader(audio_download_path=self.audio_download_path)
+
+        # Preprocessor
+        self.preprocessor = Preprocessor()
 
         # Handlers
         self.handler_chain: TranscriptAvailableHandler = self._build_handler_chain()
@@ -74,6 +78,7 @@ class YouTubeScraper:
         # Step 2: Process the video through the handler chain
         video_data = self.handler_chain.handle(video_data=video_data)
 
-        # Step 3: Preprocess Videos for Multimodal RAG
+        # Step 3: Preprocess the video -> Extract frames and corresponding metadatas
+        video_data = self.preprocessor.extract_frames_and_metadatas(video_data=video_data)
 
         return video_data
