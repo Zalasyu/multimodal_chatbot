@@ -4,21 +4,9 @@ from pathlib import Path
 from typing import Any, Dict, TypeVar
 
 from models.data_models import VideoData
+from utils.logger import logger
 
 T = TypeVar("T")
-
-
-def str_to_timestamp_milliseconds(time_str: str) -> float:
-    """
-    Convert a string in the format of "HH:MM:SS.sss" to a timestamp in milliseconds
-
-    Args:
-        time_str (str): The string to be converted
-
-    Returns:
-        float: The timestamp in milliseconds
-    """
-    return sum(60**x * int(y) for x, y in enumerate(reversed(time_str.split(":"))))
 
 
 class VideoDataJSONEncoder:
@@ -43,6 +31,7 @@ class VideoDataJSONEncoder:
 
         return data_dict
 
+    # TODO: Technical DEBT
     @staticmethod
     def decode(data_dict: Dict[str, Any]) -> VideoData:
         """
@@ -54,6 +43,7 @@ class VideoDataJSONEncoder:
         Returns:
             VideoData: The VideoData object
         """
+        logger.debug(f"Data dict: {data_dict}")
 
         # Convert string paths to Path objects
         path_fields = [
@@ -69,7 +59,24 @@ class VideoDataJSONEncoder:
             if data_dict.get(field):
                 data_dict[field] = Path(data_dict[field])
 
-        return VideoData(**data_dict)
+        logger.debug(f"Data dict: {data_dict}")
+
+        # Only pass the fields that are allowed during VideoData initialization
+        video_data = VideoData(
+            video_id=data_dict["video_id"],
+            video_url=data_dict["video_url"],
+            title=data_dict["title"],
+            description=data_dict["description"],
+            video_path=data_dict["video_path"],
+        )
+
+        # Then set the other fields after initialization
+        video_data.audio_path = data_dict["audio_path"]
+        video_data.transcript_path_vtt = data_dict["transcript_path_vtt"]
+        video_data.transcript_path_text = data_dict["transcript_path_text"]
+        video_data.description_path = data_dict["description_path"]
+
+        return video_data
 
 
 def save_video_data(video_data: VideoData, save_path: Path) -> None:
