@@ -4,7 +4,7 @@ import cv2
 import webvtt
 
 from models.data_models import VideoData
-from utils.helpers import str_to_timestamp_milliseconds
+from utils.helpers import load_video_data, str_to_timestamp_milliseconds
 from utils.logger import logger
 
 
@@ -26,10 +26,10 @@ class Preprocessor:
         video = cv2.VideoCapture(video_data.video_path)
         logger.debug(f"Displaying type: {type(video)}")
 
-        transcript: webvtt.WebVTT = webvtt.read(file=str(video_data.transcript_path_vtt))
-        logger.debug(f"Transcript type: {type(transcript)}")
+        vtt_content: webvtt.WebVTT = webvtt.read(file=video_data.transcript_path_vtt)
+        logger.debug(f"Transcript type: {type(vtt_content)}")
 
-        for idx, transcript_segment in enumerate(transcript):
+        for idx, transcript_segment in enumerate(vtt_content):
             start_time_ms = str_to_timestamp_milliseconds(transcript_segment.start)
             logger.info(f"Start time: {start_time_ms}")
             end_time_ms = str_to_timestamp_milliseconds(transcript_segment.end)
@@ -39,5 +39,13 @@ class Preprocessor:
 
 
 if __name__ == "__main__":
-    video_data_path = Path("../data/interim/video_data/")
+    absolute_video_data_path = Path(
+        "/home/zalasyu/Documents/projects/multimodal_chatbot/data/interim/video_data/KLLgGg4tmYs.json"
+    )
     preprocess = Preprocessor()
+
+    # Read the video data from the JSON file
+    video_data = load_video_data(absolute_video_data_path)
+
+    # Extract frames and corresponding metadata from the video
+    preprocess.extract_frames_and_metadatas(video_data=video_data)

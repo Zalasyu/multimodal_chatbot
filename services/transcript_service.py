@@ -49,10 +49,12 @@ class TranscriptService:
                             # Download the subtitle file to the transcript_download_path using requests
                             response: requests.Response = requests.get(url=subtitle_file, timeout=30)
                             logger.debug(f"Displaying transcript: {response.text}")
-                            captions: str = response.text
+
+                            # Get the VTT file content
+                            vtt_content: str = response.text
 
                             # Extract the text from the VTT file
-                            raw_text: str = self._extract_text_from_vtt(vtt_content=captions)
+                            raw_text: str = self._extract_text_from_vtt(vtt_content=vtt_content)
 
                             # Create the VTT file path
                             video_data.transcript_path_vtt = self._create_transcript_path(
@@ -69,10 +71,10 @@ class TranscriptService:
                             )
 
                             # Save the text to the text file
-                            self._save_transcription(video_data=video_data, content=raw_text, ext="txt")
+                            self._save_transcription(video_path=video_data.transcript_path_text, content=raw_text)
 
                             # Save the text to the VTT file
-                            self._save_transcription(video_data=video_data, content=raw_text, ext="vtt")
+                            self._save_transcription(video_path=video_data.transcript_path_vtt, content=vtt_content)
 
                     return video_data
 
@@ -115,23 +117,20 @@ class TranscriptService:
 
         return cleaned_text
 
-    def _save_transcription(self, video_data: VideoData, content: str, ext: str) -> VideoData:
+    def _save_transcription(self, video_path: Path, content: str) -> None:
         """
         Saves the transcript to a file
 
         Args:
             video_data (VideoData): The video metadata
             content (str): The transcript
-            ext (str): The extension of the transcript
 
-        Returns:
-            VideoData: The video metadata
         """
 
-        with open(Path(self.transcript_download_path, f"{video_data.title}_{video_data.video_id}.{ext}"), "w") as f:
+        with open(video_path, "w") as f:
             f.write(content)
 
-        return video_data
+        return
 
     def _create_transcript_path(self, transcript_download_path: Path, video_path: Path, ext: str) -> Path:
         """
