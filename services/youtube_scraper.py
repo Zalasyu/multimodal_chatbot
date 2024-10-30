@@ -5,7 +5,6 @@ from handlers.no_speech_detected_handler import NoSpeechDetectedHandler
 from handlers.transcribe_video_handler import TranscribeVideoHandler
 from handlers.transcript_available_handler import TranscriptAvailableHandler
 from models.data_models import VideoData
-from preprocess.preprocessor import Preprocessor
 from services.audio_downloader import AudioDownloader
 from services.video_downloader import VideoDownloader
 from utils.helpers import save_video_data
@@ -27,9 +26,6 @@ class YouTubeScraper:
         # Services
         self.video_downloader = VideoDownloader(video_download_path=self.video_download_path)
         self.audio_downloader = AudioDownloader(audio_download_path=self.audio_download_path)
-
-        # Preprocessor
-        self.preprocessor = Preprocessor()
 
         # Handlers
         self.handler_chain: TranscriptAvailableHandler = self._build_handler_chain()
@@ -57,7 +53,7 @@ class YouTubeScraper:
 
         return transcript_available_handler
 
-    def process_video(self, video_url: str) -> VideoData:
+    def scrape_video(self, video_url: str) -> VideoData:
         """
         Downloads a YouTube video
 
@@ -76,18 +72,14 @@ class YouTubeScraper:
         self.audio_downloader.download_audio(video_url=video_url, video_data=video_data)
         logger.info(f"The video data:\n{video_data}")
 
-        # Step 2: Process the video through the handler chain
+        # Step 3: Scrape the transcript, or transcribe the video or generate a description
         video_data = self.handler_chain.handle(video_data=video_data)
 
-        logger.info(f"The video data:\n{video_data}")
         save_video_data(
             video_data=video_data,
             save_path=Path(
                 f"/home/zalasyu/Documents/projects/multimodal_chatbot/data/interim/video_data/{video_data.video_id}.json"
             ),
         )
-
-        # Step 3: Preprocess the video -> Extract frames and corresponding metadatas
-        video_data = self.preprocessor.extract_frames_and_metadatas(video_data=video_data)
 
         return video_data

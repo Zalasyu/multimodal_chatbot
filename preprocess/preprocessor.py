@@ -2,7 +2,9 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 import cv2
+import numpy as np
 import webvtt
+from colorama import Fore, Style
 from tqdm import tqdm
 
 from models.data_models import VideoData, VideoSegmentData
@@ -57,7 +59,7 @@ class Preprocessor:
 
         return float(total_milliseconds)
 
-    def _parse_vtt_segments(self, video_data: VideoData) -> List[Tuple[float, float, float]]:
+    def _parse_vtt_segments(self, video_data: VideoData) -> List[Tuple[float, float, float, str]]:
         """
         Parse the WebVTT segments from the transcript file and  extract segment timings.
 
@@ -82,8 +84,13 @@ class Preprocessor:
             end_ms = self._str_to_timestamp_milliseconds(transcript_segment.end)
             mid_ms = (start_ms + end_ms) / 2
 
+            # Remove second line of text if it exists
+            if "\n" in transcript_segment.text:
+                transcript_segment.text = transcript_segment.text.split("\n")[1]
+
             # Add the segment to the list
-            segments.append((start_ms, mid_ms, end_ms))
+            segments.append((start_ms, mid_ms, end_ms, transcript_segment.text))
+            logger.debug(f"Added segment: {transcript_segment.text}")
 
         return segments
 
@@ -106,17 +113,21 @@ class Preprocessor:
         try:
 
             # Parse the WebVTT segments
-            segment_timings: List[Tuple[float, float, float]] = self._parse_vtt_segments(video_data=video_data)
+            segment_timings: List[Tuple[float, float, float, str]] = self._parse_vtt_segments(video_data=video_data)
 
             video = cv2.VideoCapture(video_data.video_path)
             if not video.isOpened():
                 raise RuntimeError(f"Could not open video file: {video_data.video_path}")
 
             # Process each segment
-            for segment_id, (start_ms, mid_ms, end_ms) in tqdm(enumerate(segment_timings)):
+            for segment_id, (start_ms, mid_ms, end_ms, transcript_segment) in tqdm(
+                enumerate(segment_timings),
+                total=len(segment_timings),
+                desc=f"{Fore.CYAN}Processing video: {video_data.title} {Style.RESET_ALL}",
+            ):
 
                 # Create segment output directory
-                segment_dir = self.base_output_path / video_data.video_id / f"segment_{segment_id}"
+                segment_dir: Path = self.base_output_path / video_data.video_id / f"segment_{segment_id}"
                 segment_dir.mkdir(parents=True, exist_ok=True)
 
                 # Create SegementData
@@ -136,18 +147,33 @@ class Preprocessor:
                 )
 
                 # Extract frame
-                success: bool = self._extract_frame(video=video, frame_path=segment.extracted_frame_path, timestamp_ms=mid_ms)
+                resized_frame = self._extract_frame(video=video, frame_path=segment.extracted_frame_path, timestamp_ms=mid_ms)
 
-                # Add segment to video data
-                if success:
-                    video_data.add_segement(segment=segment)
-                    logger.debug(f"Added segment {segment.video_segment_id} to video {video_data.video_id}")
+                # Save transcript
+                if resized_frame is not None:
+                    # Write transcript to file
+                    segment.video_segment_transcript_path.write_text(transcript_segment)
+
+                    # Assign transcript
+                    segment.transcript = transcript_segment
+
+                    # Assign frame
+                    segment.frame = resized_frame
+
                 else:
                     logger.warning(
                         f"Failed to extract frame for segment {segment.video_segment_id} of video {video_data.video_id}"
                     )
 
-                return video_data
+                # Add segment to video data
+                if resized_frame is not None:
+                    video_data.add_segement(segment=segment)
+                else:
+                    logger.warning(
+                        f"Failed to extract frame for segment {segment.video_segment_id} of video {video_data.video_id}"
+                    )
+
+            return video_data
 
         except Exception as e:
             logger.error(f"Error processing video {video_data.video_id}: {str(e)}")
@@ -187,7 +213,7 @@ class Preprocessor:
 
         return new_width, new_height
 
-    def _extract_frame(self, video: cv2.VideoCapture, frame_path: Path, timestamp_ms: float) -> bool:
+    def _extract_frame(self, video: cv2.VideoCapture, frame_path: Path, timestamp_ms: float) -> Optional[np.ndarray]:
         """
         Extract a frame from a video.
 
@@ -197,7 +223,7 @@ class Preprocessor:
             timestamp_ms (float): The timestamp of the frame in milliseconds
 
         Returns:
-            bool: True if the frame was extracted, False otherwise
+            resized_frame (Optional[np.ndarray]): The resized frame; None if the frame could not be extracted
         """
         try:
 
@@ -231,11 +257,11 @@ class Preprocessor:
             # Save frame
             cv2.imwrite(str(frame_path), resized_frame, [int(cv2.IMWRITE_JPEG_QUALITY), self.frame_quality])
 
-            return True
+            return resized_frame
 
         except Exception as e:
             logger.error(f"Error extracting frame at timestamp {timestamp_ms}: {str(e)}")
-            return False
+            return None
 
 
 if __name__ == "__main__":
@@ -246,12 +272,10 @@ if __name__ == "__main__":
     video_data = load_video_data(absolute_video_data_path)
 
     # Create the base output path if it doesn't exist
-    base_output_path = Path(
-        f"/home/zalasyu/Documents/projects/multimodal_chatbot/data/processed/video_frames/{video_data.video_id}"
-    )
+    base_output_path = Path(f"/home/zalasyu/Documents/projects/multimodal_chatbot/data/processed/video_frames/")
 
     # Create an instance of the Preprocessor
-    preprocess = Preprocessor(base_output_path=base_output_path)
+    preprocess = Preprocessor(base_output_path=base_output_path, target_height=350)
 
     # Extract frames and corresponding metadata from the video
     preprocess.process_video(video_data=video_data)

@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
+
+import numpy as np
 
 from utils.logger import logger
 
@@ -15,13 +17,19 @@ class VideoSegmentData:
     video_segment_path: Path
     video_segment_transcript_path: Path
     extracted_frame_path: Path
+    transcript: Optional[str] = field(init=False, default=None)
+    frame: Optional[np.ndarray] = field(init=False, default=None)
     duration_ms: float
     start_ms: float
     mid_ms: float
     end_ms: float
+    embeddings: Optional[np.ndarray] = field(init=False, default=None)
+
+    def __repr__(self):
+        return f"VideoSegmentData(video_segment_id={self.video_segment_id}, start_ms={self.start_ms}, end_ms={self.end_ms}, duration_ms={self.duration_ms}, transcript={self.transcript}, parent_video_id={self.parent_video_id})"
 
 
-@dataclass
+@dataclass()
 class VideoData:
     video_id: str
     video_url: str
@@ -33,7 +41,7 @@ class VideoData:
     transcript_path_vtt: Optional[Path] = field(init=False, default=None)
     transcript_path_text: Optional[Path] = field(init=False, default=None)
     description_path: Optional[Path] = field(init=False, default=None)
-    segments: Dict[int, VideoSegmentData] = field(init=False, default_factory=dict)
+    segments: List[VideoSegmentData] = field(init=False, default_factory=list)
 
     def add_segement(self, segment: VideoSegmentData) -> None:
         """
@@ -49,8 +57,7 @@ class VideoData:
             raise ValueError(f"Segment parent_video_id {segment.parent_video_id} does not match video_id {self.video_id}")
 
         # Add the segment to the segments dictionary
-        self.segments[segment.video_segment_id] = segment
-        logger.debug(f"Added segment {segment.video_segment_id} to video {self.video_id}")
+        self.segments.append(segment)
 
     def get_segment(self, segment_id: int) -> Optional[VideoSegmentData]:
         """
@@ -62,7 +69,9 @@ class VideoData:
         Returns:
             Optional[VideoSegmentData]: Video segment data if found, None otherwise.
         """
-        return self.segments.get(segment_id)
+
+        # Get the segment with the specified segment_id
+        return self.segments[segment_id]
 
     def get_segments_chronologically(self) -> List[VideoSegmentData]:
         """
@@ -71,29 +80,33 @@ class VideoData:
         Returns:
             List[VideoSegmentData]: List of video segments in chronological order.
         """
-        return sorted(self.segments.values(), key=lambda x: x.start_ms)
+        return sorted(self.segments, key=lambda segment: segment.start_ms)
 
-    def get_segments_by_timerange(self, start_ms: float, end_ms: float) -> List[VideoSegmentData]:
+    def get_nearest_neighbours(self, segment_id: int, n: int) -> List[VideoSegmentData]:
         """
-        Get the video segments within a specific time range.
+        Get the nearest neighbours of a specific segment.
 
         Args:
-            start_time_ms (float): Start time in milliseconds.
-            end_time_ms (float): End time in milliseconds.
+            segment_id (int): ID of the segment to find nearest neighbours of.
+            n (int): Number of nearest neighbours to return.
 
         Returns:
-            List[VideoSegmentData]: List of video segments within the time range.
+            List[VideoSegmentData]: List of nearest neighbours.
         """
-        return [segment for segment in self.segments.values() if segment.start_ms <= end_ms and segment.end_ms >= start_ms]
+
+        # Get n segments before and after the specified segment (Do not go out of bounds)
+        return self.segments[max(0, segment_id - n) : min(len(self.segments), segment_id + n + 1)]
 
     def remove_segment(self, segment_id: int) -> None:
         """
         Remove a segment from the video data.
-
         Args:
             segment_id (int): ID of the segment to be removed.
         """
-        del self.segments[segment_id]
+
+        # Remove the segment with the specified segment_id
+        self.segments.pop(segment_id)
+        logger.debug(f"Removed segment {segment_id} from video {self.video_id}")
 
     def clear_segments(self) -> None:
         """
