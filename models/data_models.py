@@ -18,6 +18,7 @@ class VideoSegmentData:
     video_segment_transcript_path: Path
     extracted_frame_path: Path
     transcript: Optional[str] = field(init=False, default=None)
+    enriched_transcript: Optional[str] = field(init=False, default=None)
     frame: Optional[np.ndarray] = field(init=False, default=None)
     duration_ms: float
     start_ms: float
@@ -29,7 +30,7 @@ class VideoSegmentData:
         return f"VideoSegmentData(video_segment_id={self.video_segment_id}, start_ms={self.start_ms}, end_ms={self.end_ms}, duration_ms={self.duration_ms}, transcript={self.transcript}, parent_video_id={self.parent_video_id})"
 
 
-@dataclass()
+@dataclass
 class VideoData:
     video_id: str
     video_url: str

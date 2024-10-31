@@ -77,20 +77,32 @@ class Preprocessor:
         segments = []
         vtt_content: webvtt.WebVTT = webvtt.read(file=video_data.transcript_path_vtt)
 
-        for transcript_segment in vtt_content:
+        for idx, transcript_segment in enumerate(vtt_content):
+
+            # SKip segment with only one line
+            if len(transcript_segment.text.splitlines()) == 1:
+                continue
+
+            # Check if the next segment's first line matches the current segment's last line
+            # If so then remove the second line
+            # Check if there is a next segment
+            if idx < len(vtt_content) - 1:
+                next_transcript_segment = vtt_content[idx + 1]
+                if transcript_segment.text.splitlines()[-1] == next_transcript_segment.text.splitlines()[0]:
+                    transcript_segment.text = transcript_segment.text.splitlines()[0]
 
             # Get the start and end times in milliseconds
             start_ms = self._str_to_timestamp_milliseconds(transcript_segment.start)
             end_ms = self._str_to_timestamp_milliseconds(transcript_segment.end)
             mid_ms = (start_ms + end_ms) / 2
 
-            # Remove second line of text if it exists
-            if "\n" in transcript_segment.text:
-                transcript_segment.text = transcript_segment.text.split("\n")[1]
-
             # Add the segment to the list
             segments.append((start_ms, mid_ms, end_ms, transcript_segment.text))
             logger.debug(f"Added segment: {transcript_segment.text}")
+
+        # Remove the last segment
+        if len(segments) > 0:
+            segments.pop()
 
         return segments
 
@@ -246,7 +258,7 @@ class Preprocessor:
 
             if not ret:
                 logger.warning(f"Could not extract frame at timestamp: {timestamp_ms}")
-                return False
+                return None
 
             # Resize frame
             resized_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)

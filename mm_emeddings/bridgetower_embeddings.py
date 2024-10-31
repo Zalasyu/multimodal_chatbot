@@ -1,7 +1,9 @@
-from typing import List
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Tuple
 
 import numpy as np
 import torch
+from colorama import Fore, Style
 from sklearn.preprocessing import normalize
 from tqdm import tqdm
 from transformers import BridgeTowerModel, BridgeTowerProcessor
@@ -28,17 +30,22 @@ class BridgeTowerEmbedder:
         Args:
             segment (VideoSegmentData): _description_
         """
-        return (segment.frame, segment.transcript)
+        return (segment.frame, segment.enriched_transcript)
 
-    def _embed_by_batch(self, images: List, captions: List) -> list:
+    def _embed_by_batch(self, images: Tuple, captions: Tuple) -> list:
         """
         Embed a segment using the BridgeTower model.
         Args:
-            images (List): List of images
-            captions (List): List of captions
+            images (Tuple): List of images
+            captions (Tuple): List of captions
         Returns:
             np.ndarray: Embeddings
         """
+
+        # Logging
+        logger.info(f"Embedding {len(images)} images")
+        logger.info(f"Embedding {len(captions)} captions")
+
         embeddings_list = []
         for i in tqdm(range(0, len(images), self.batch_size)):
             batch_images = images[i : i + self.batch_size]
@@ -82,25 +89,26 @@ class BridgeTowerEmbedder:
         video_segments: List[VideoSegmentData] = video_data.get_segments_chronologically()
 
         # Enrich each segment's transcript with transcripts of n-neighbouring segments
-        for segment in video_segments:
+        for segment in tqdm(
+            video_segments, total=len(video_segments), desc=f"{Fore.CYAN}Enriching transcripts {Style.RESET_ALL}"
+        ):
             self._enrich_segment_transcripts(video_data=video_data, segment=segment)
-            break
 
-        # # Create Tuple of image and caption (maintain order)
-        # with ThreadPoolExecutor() as executor:
-        #     results = executor.map(self._extract_image_n_caption, video_segments)
+        # Create Tuple of image and caption (maintain order)
+        with ThreadPoolExecutor() as executor:
+            results = executor.map(self._extract_image_n_caption, video_segments)
 
-        # images, captions = zip(*results)
+        images, captions = zip(*results)
 
-        # # Embed by Batch of segments
-        # embeddings_list = self._embed_by_batch(images=images, captions=captions)
+        # Embed by Batch of segments
+        embeddings_list = self._embed_by_batch(images=images, captions=captions)
 
-        # # Concatenate and normalize embeddings
-        # embeddings_normalized = self._concat_n_norm_embeddings(embeddings=embeddings_list)
+        # Concatenate and normalize embeddings
+        embeddings_normalized = self._concat_n_norm_embeddings(embeddings=embeddings_list)
 
-        # # Update embeddings in VideoSegmentData
-        # for i, segment in enumerate(video_segments):
-        #     segment.embeddings = embeddings_normalized[i]
+        # Update embeddings in VideoSegmentData
+        for i, segment in enumerate(video_segments):
+            segment.embeddings = embeddings_normalized[i]
 
         return video_data
 
@@ -124,12 +132,9 @@ class BridgeTowerEmbedder:
             VideoSegmentData: Augmented Segment Data
         """
 
-        # Display original transcript
-        logger.debug(f"Original transcript: {segment.transcript}")
-
         # Get n segments before and after the specified segment (Use VideoData)
         neighbouring_segments: List[VideoSegmentData] = video_data.get_nearest_neighbours(
-            segment_id=segment.video_segment_id, n=10
+            segment_id=segment.video_segment_id, n=12
         )
 
         # Extract transcripts of these segments
@@ -138,9 +143,6 @@ class BridgeTowerEmbedder:
             neighbouring_transcripts.append(str(neighbour_segment.transcript))
 
         # Concatenate transcripts
-        segment.transcript = " ".join(neighbouring_transcripts)
-
-        # Display updated transcript
-        logger.debug(f"Updated transcript: {segment.transcript}")
+        segment.enriched_transcript = " ".join(neighbouring_transcripts)
 
         return segment

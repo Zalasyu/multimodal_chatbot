@@ -38,7 +38,9 @@ def main():
 
     # Peek into segments' embeddings
     segs = video_data.get_segments_chronologically()
-    # logger.debug(f"Segment embeddings: {segs[0].embeddings}")
+    logger.debug(f"Segment embeddings: {segs[0].embeddings}")
+
+    # Step 4: Send the embeddings to LanceDB
 
     logger.info("Application ended")
 

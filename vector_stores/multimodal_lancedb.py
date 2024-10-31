@@ -1,11 +1,8 @@
 import lancedb
 
-from mm_emeddings.bridgetower_embeddings import BridgeTowerEmbedder
-
 
 class MultiModalLanceDB:
-    def __init__(self, db_path: str, embedder: BridgeTowerEmbedder):
-        self.embedder = embedder
+    def __init__(self, db_path: str):
         self.db_path = db_path
 
     def __enter__(self):
