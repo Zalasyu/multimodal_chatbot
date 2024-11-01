@@ -164,7 +164,8 @@ class Preprocessor:
                 # Save transcript
                 if resized_frame is not None:
                     # Write transcript to file
-                    segment.video_segment_transcript_path.write_text(transcript_segment)
+                    with open(segment.video_segment_transcript_path, "w", encoding="utf-8") as f:
+                        f.write(transcript_segment)
 
                     # Assign transcript
                     segment.transcript = transcript_segment

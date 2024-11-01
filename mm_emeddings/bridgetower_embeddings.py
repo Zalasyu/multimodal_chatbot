@@ -4,6 +4,7 @@ from typing import List, Tuple
 import numpy as np
 import torch
 from colorama import Fore, Style
+from PIL import Image
 from sklearn.preprocessing import normalize
 from tqdm import tqdm
 from transformers import BridgeTowerModel, BridgeTowerProcessor
@@ -21,7 +22,7 @@ class BridgeTowerEmbedder:
         self.model.eval()
 
         # Batch size
-        self.batch_size = 32
+        self.batch_size = 48
 
     def _extract_image_n_caption(self, segment: VideoSegmentData) -> tuple:
         """
@@ -62,10 +63,11 @@ class BridgeTowerEmbedder:
             encoding = {key: value.to(self.device) for key, value in encoding.items()}
 
             with torch.no_grad():
-                outputs = self.model(**encoding)
-                # Extract embeddings (pooler_output has shape [batch_size, 1526])
-                embeddings = outputs.pooler_output
-                embeddings_list.append(embeddings)
+                model_output = self.model(**encoding)
+
+            # Extract embeddings (pooler_output has shape [batch_size, 1526])
+            embeddings = model_output.pooler_output
+            embeddings_list.append(embeddings)
 
         return embeddings_list
 
@@ -108,7 +110,7 @@ class BridgeTowerEmbedder:
 
         # Update embeddings in VideoSegmentData
         for i, segment in enumerate(video_segments):
-            segment.embeddings = embeddings_normalized[i]
+            segment.embeddings = embeddings_normalized[i].tolist()
 
         return video_data
 
@@ -146,3 +148,33 @@ class BridgeTowerEmbedder:
         segment.enriched_transcript = " ".join(neighbouring_transcripts)
 
         return segment
+
+    def embed_query(self, query: str) -> list:
+        """
+        Embed a query.  Here we are using the BridgeTower model.
+
+        Args:
+            query (str): _description_
+
+        Returns:
+            list: _description_
+        """
+        placeholder_image = Image.new("RGB", (350, 350), color="white")
+        inputs = self.processor(
+            text=[query],
+            images=[placeholder_image],
+            return_tensors="pt",
+            padding=True,
+        )
+        # Move tensors in 'encoding' to the device
+        inputs = {key: value.to(self.device) for key, value in inputs.items()}
+
+        with torch.no_grad():
+            model_output = self.model(**inputs)
+
+        embeddings = model_output.pooler_output
+        embeddings = embeddings[0].cpu().numpy()
+
+        logger.debug(f"Embeddings shape: {len(embeddings)}")
+        logger.debug(f"Embeddings type: {type(embeddings)}")
+        return embeddings

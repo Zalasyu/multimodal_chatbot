@@ -7,7 +7,6 @@ from handlers.transcript_available_handler import TranscriptAvailableHandler
 from models.data_models import VideoData
 from services.audio_downloader import AudioDownloader
 from services.video_downloader import VideoDownloader
-from utils.helpers import save_video_data
 from utils.logger import logger
 
 
@@ -74,12 +73,5 @@ class YouTubeScraper:
 
         # Step 3: Scrape the transcript, or transcribe the video or generate a description
         video_data = self.handler_chain.handle(video_data=video_data)
-
-        save_video_data(
-            video_data=video_data,
-            save_path=Path(
-                f"/home/zalasyu/Documents/projects/multimodal_chatbot/data/interim/video_data/{video_data.video_id}.json"
-            ),
-        )
 
         return video_data

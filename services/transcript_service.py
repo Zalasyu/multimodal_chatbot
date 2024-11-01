@@ -48,7 +48,6 @@ class TranscriptService:
 
                             # Download the subtitle file to the transcript_download_path using requests
                             response: requests.Response = requests.get(url=subtitle_file, timeout=30)
-                            logger.debug(f"Displaying transcript: {response.text}")
 
                             # Get the VTT file content
                             vtt_content: str = response.text
@@ -142,7 +141,7 @@ class TranscriptService:
             video_path (Path): _description_
 
         Returns:
-            Path: _description_
+            Path: The new transcript path
         """
 
         # Create absolute path for the transcript file

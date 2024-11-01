@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
@@ -24,7 +25,15 @@ class VideoSegmentData:
     start_ms: float
     mid_ms: float
     end_ms: float
-    embeddings: Optional[np.ndarray] = field(init=False, default=None)
+    embeddings: List[float] = field(init=False)
+
+    def __post_init__(self):
+        warnings.warn(
+            "The `VideoSegmentData` dataclass is planned for deprecation in future versions. "
+            "Please consider updating your code to use the new data model once available.",
+            category=FutureWarning,
+            stacklevel=2,
+        )
 
     def __repr__(self):
         return f"VideoSegmentData(video_segment_id={self.video_segment_id}, start_ms={self.start_ms}, end_ms={self.end_ms}, duration_ms={self.duration_ms}, transcript={self.transcript}, parent_video_id={self.parent_video_id})"
@@ -43,6 +52,14 @@ class VideoData:
     transcript_path_text: Optional[Path] = field(init=False, default=None)
     description_path: Optional[Path] = field(init=False, default=None)
     segments: List[VideoSegmentData] = field(init=False, default_factory=list)
+
+    def __post_init__(self):
+        warnings.warn(
+            "The `VideoData` dataclass is planned for deprecation in future versions. "
+            "Please consider updating your code to use the new data model once available.",
+            category=FutureWarning,
+            stacklevel=2,
+        )
 
     def add_segement(self, segment: VideoSegmentData) -> None:
         """

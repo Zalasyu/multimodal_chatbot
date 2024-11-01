@@ -40,7 +40,6 @@ class VideoDownloader:
                 info_dict = ydl.extract_info(video_url, download=True)
 
                 logger.info(f"Downloaded {info_dict['title']}")
-                logger.debug(f"All the video info: {info_dict}")
 
                 # Sanitize the filename
                 sanitized_title = sanitize_filename(info_dict["title"], restricted=True)
