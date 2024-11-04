@@ -1,12 +1,12 @@
 from pathlib import Path
 
-from handlers.video_processing_handler import VideoProcessingHandler
+from handlers.base_handler import BaseHandler
 from models.data_models import VideoData
 from services.speech_to_text_service import SpeechToTextService
 from utils.logger import logger
 
 
-class TranscribeVideoHandler(VideoProcessingHandler):
+class TranscribeVideoHandler(BaseHandler):
 
     def __init__(self, transcript_download_path: Path):
         super().__init__()

@@ -22,7 +22,10 @@ class BridgeTowerEmbedder:
         self.model.eval()
 
         # Batch size
-        self.batch_size = 48
+        self.batch_size = 16
+
+        # Max Sequence Length
+        self.max_seq_length = 512
 
     def _extract_image_n_caption(self, segment: VideoSegmentData) -> tuple:
         """
@@ -58,6 +61,8 @@ class BridgeTowerEmbedder:
                 images=batch_images,
                 return_tensors="pt",
                 padding=True,
+                truncation=True,
+                max_length=self.max_seq_length,
             )
             # Move tensors in 'encoding' to the device
             encoding = {key: value.to(self.device) for key, value in encoding.items()}
@@ -92,7 +97,9 @@ class BridgeTowerEmbedder:
 
         # Enrich each segment's transcript with transcripts of n-neighbouring segments
         for segment in tqdm(
-            video_segments, total=len(video_segments), desc=f"{Fore.CYAN}Enriching transcripts {Style.RESET_ALL}"
+            video_segments,
+            total=len(video_segments),
+            desc=f"{Fore.CYAN}Enriching transcripts {Style.RESET_ALL}",
         ):
             self._enrich_segment_transcripts(video_data=video_data, segment=segment)
 

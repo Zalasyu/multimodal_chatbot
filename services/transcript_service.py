@@ -1,7 +1,7 @@
-import re
 from pathlib import Path
 
 import requests  # type: ignore
+import webvtt
 from yt_dlp import YoutubeDL
 
 from models.data_models import VideoData
@@ -52,9 +52,6 @@ class TranscriptService:
                             # Get the VTT file content
                             vtt_content: str = response.text
 
-                            # Extract the text from the VTT file
-                            raw_text: str = self._extract_text_from_vtt(vtt_content=vtt_content)
-
                             # Create the VTT file path
                             video_data.transcript_path_vtt = self._create_transcript_path(
                                 transcript_download_path=self.transcript_download_path,
@@ -69,52 +66,64 @@ class TranscriptService:
                                 ext="txt",
                             )
 
-                            # Save the text to the text file
-                            self._save_transcription(video_path=video_data.transcript_path_text, content=raw_text)
-
                             # Save the text to the VTT file
-                            self._save_transcription(video_path=video_data.transcript_path_vtt, content=vtt_content)
+                            self._save_transcription(
+                                video_path=video_data.transcript_path_vtt,
+                                content=vtt_content,
+                            )
+
+                            # Extract the text from the VTT file
+                            raw_text: str = self._parse_vtt_segments(video_data=video_data)
+
+                            # Save the text to the text file
+                            self._save_transcription(
+                                video_path=video_data.transcript_path_text,
+                                content=raw_text,
+                            )
 
                     return video_data
 
         except Exception as e:
-            logger.error(f"Failed to fetch transcript for video {video_data.video_id}: {e}")
+            logger.error(f"Failed to fetch transcript for video {video_data.title}: {e}")
 
         return video_data
 
-    def _extract_text_from_vtt(self, vtt_content: str) -> str:
+    def _parse_vtt_segments(self, video_data: VideoData) -> str:
         """
-        From a VTT file, extract the text. Remove the timestamps
+        Parse the WebVTT segments from the transcript VTT file and create the transcript in text, cleaned.
+
 
         Args:
-            vtt_content (str): The contents of the VTT file
+            video_data (VideoData): The video data with the transcript path.
 
         Returns:
-            str: The text from the VTT file
+            str: The transcript text
         """
 
-        lines = vtt_content.split("\n")
+        segments = []
+        vtt_content: webvtt.WebVTT = webvtt.read(file=video_data.transcript_path_vtt)
 
-        # Initialize an empty list to collect lines without timestamps, tags or metadatas
-        cleaned_lines = []
+        for idx, transcript_segment in enumerate(vtt_content):
 
-        for line in lines:
-            # Skip lines with timestamps, tags or metadatas
-            # TODO: Create a better filtering logic
-            if (
-                re.search(r"^\d{2}:\d{2}:\d{2}\.\d{3}", line)
-                or re.search(r"[^>]+>", line)
-                or line.startswith(("WEBVTT", "Kind:", "Language:"))
-            ):
+            # SKip segment with only one line
+            if len(transcript_segment.text.splitlines()) == 1:
                 continue
 
-            # If the line passes the above filters, add it to the cleaned_lines list
-            cleaned_lines.append(line.strip())
+            # Check if the next segment's first line matches the current segment's last line
+            # If so then remove the second line
+            # Check if there is a next segment
+            if idx < len(vtt_content) - 1:
+                next_transcript_segment = vtt_content[idx + 1]
+                if transcript_segment.text.splitlines()[-1] == next_transcript_segment.text.splitlines()[0]:
+                    transcript_segment.text = transcript_segment.text.splitlines()[0]
 
-        # Join the cleaned_lines list into a single string
-        cleaned_text = " ".join(cleaned_lines).strip()
+            # Add the segment to the list
+            segments.append(transcript_segment.text)
 
-        return cleaned_text
+            # Create the transcript text
+            transcript_text = " ".join(segments)
+
+        return transcript_text
 
     def _save_transcription(self, video_path: Path, content: str) -> None:
         """

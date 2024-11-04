@@ -29,9 +29,12 @@ class VideoModel(LanceModel):
     video_url: str
     title: str
     description: str
+    summary_abstractive: str = Field(default="")
+    summary_extractive: str = Field(default="")
     language: str = Field(default="en")
     video_path: str
     audio_path: str
     transcript_path_vtt: str
     transcript_path_text: str
+    transcribed: bool
     description_path: Optional[str]

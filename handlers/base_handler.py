@@ -3,11 +3,11 @@ from abc import ABC, abstractmethod
 from models.data_models import VideoData
 
 
-class VideoProcessingHandler(ABC):
+class BaseHandler(ABC):
     def __init__(self):
         self.next_handler = None
 
-    def set_next(self, handler: "VideoProcessingHandler") -> "VideoProcessingHandler":
+    def set_next(self, handler: "BaseHandler") -> "BaseHandler":
         """
         Sets the next handler in the chain.
 

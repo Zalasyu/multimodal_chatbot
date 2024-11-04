@@ -29,7 +29,7 @@ class Preprocessor:
             target_height (Optional[int], optional): Target height for extracted frames. Defaults to None.
             frame_quality (int, optional): JPEG quality for extracted frames[0-100]. Defaults to 95.
         """
-        self.base_output_path = base_output_path
+        self.base_output_path = Path(base_output_path, "video_frames")
         self.target_width = target_width
         self.target_height = target_height
         self.frame_quality = frame_quality
@@ -76,11 +76,14 @@ class Preprocessor:
 
         segments = []
         vtt_content: webvtt.WebVTT = webvtt.read(file=video_data.transcript_path_vtt)
+        logger.debug(f"Displaying WebVTT content: {vtt_content}")
+        logger.debug(f"The number of segments: {len(vtt_content)}")
 
         for idx, transcript_segment in enumerate(vtt_content):
+            logger.debug(f"Processing segment: {transcript_segment.text}")
 
             # SKip segment with only one line
-            if len(transcript_segment.text.splitlines()) == 1:
+            if len(transcript_segment.text.splitlines()) == 1 and not video_data.transcribed:
                 continue
 
             # Check if the next segment's first line matches the current segment's last line
@@ -159,7 +162,11 @@ class Preprocessor:
                 )
 
                 # Extract frame
-                resized_frame = self._extract_frame(video=video, frame_path=segment.extracted_frame_path, timestamp_ms=mid_ms)
+                resized_frame = self._extract_frame(
+                    video=video,
+                    frame_path=segment.extracted_frame_path,
+                    timestamp_ms=mid_ms,
+                )
 
                 # Save transcript
                 if resized_frame is not None:
@@ -197,7 +204,11 @@ class Preprocessor:
         return video_data
 
     def _maintain_aspect_ratio_resize(
-        self, width: int, height: int, target_width: Optional[int] = None, target_height: Optional[int] = None
+        self,
+        width: int,
+        height: int,
+        target_width: Optional[int] = None,
+        target_height: Optional[int] = None,
     ) -> Tuple[int, int]:
         """
         Maintain aspect ratio resize of an image.
@@ -246,7 +257,10 @@ class Preprocessor:
 
             # Maintain aspect ratio resize
             new_width, new_height = self._maintain_aspect_ratio_resize(
-                width=original_width, height=original_height, target_width=self.target_width, target_height=self.target_height
+                width=original_width,
+                height=original_height,
+                target_width=self.target_width,
+                target_height=self.target_height,
             )
 
             # Set frame position
@@ -268,7 +282,11 @@ class Preprocessor:
             frame_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Save frame
-            cv2.imwrite(str(frame_path), resized_frame, [int(cv2.IMWRITE_JPEG_QUALITY), self.frame_quality])
+            cv2.imwrite(
+                str(frame_path),
+                resized_frame,
+                [int(cv2.IMWRITE_JPEG_QUALITY), self.frame_quality],
+            )
 
             return resized_frame
 

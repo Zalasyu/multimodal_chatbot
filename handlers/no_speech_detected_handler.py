@@ -1,12 +1,12 @@
 from pathlib import Path
 
-from handlers.video_processing_handler import VideoProcessingHandler
+from handlers.base_handler import BaseHandler
 from models.data_models import VideoData
 from services.video_description_service import VideoDescriptionService
 from utils.logger import logger
 
 
-class NoSpeechDetectedHandler(VideoProcessingHandler):
+class NoSpeechDetectedHandler(BaseHandler):
 
     def __init__(self, video_description_path: Path):
         super().__init__()

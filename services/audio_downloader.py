@@ -30,7 +30,13 @@ class AudioDownloader:
             "writesubtitles": False,
             "writeautomaticsub": False,
             "restrictfilenames": True,
-            "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}],
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                }
+            ],
             "quiet": True,
         }
 

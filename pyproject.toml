@@ -34,6 +34,11 @@ pyarrow = "^18.0.0"
 polars = "^1.12.0"
 colorama = "^0.4.6"
 duckdb = "^1.1.2"
+sentencepiece = "^0.2.0"
+sentence-transformers = "^3.2.1"
+langchain-community = "^0.3.5"
+langchain-experimental = "^0.3.3"
+langchain-huggingface = "^0.1.2"
 
 
 [tool.poetry.group.dev.dependencies]

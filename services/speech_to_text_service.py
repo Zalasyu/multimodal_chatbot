@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import torch
 import whisper
 
 from models.data_models import VideoData
@@ -7,9 +8,13 @@ from utils.logger import logger
 
 
 class SpeechToTextService:
-    def __init__(self, transcript_download_path: Path, model_name: str = "base") -> None:
+    def __init__(self, transcript_download_path: Path, model_name: str = "base.en") -> None:
         logger.debug(f"SpeechToTextService initializing with model_name: {model_name}")
-        self.model = whisper.load_model(model_name)
+
+        # Assign Device
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.model = whisper.load_model(model_name, device=self.device)
         self.options = dict(
             task="transcribe",
             language="en",
@@ -45,26 +50,43 @@ class SpeechToTextService:
 
             # Create the VTT file path
             video_data.transcript_path_vtt = self._create_transcript_path(
-                transcript_download_path=self.transcript_download_path, video_path=video_data.video_path, ext="vtt"
+                transcript_download_path=self.transcript_download_path,
+                video_path=video_data.video_path,
+                ext="vtt",
             )
 
             # Create the text file path
             video_data.transcript_path_text = self._create_transcript_path(
-                transcript_download_path=self.transcript_download_path, video_path=video_data.video_path, ext="txt"
+                transcript_download_path=self.transcript_download_path,
+                video_path=video_data.video_path,
+                ext="txt",
             )
 
             # Save the transcription as a WebVTT file
-            self._save_transcription_as_vtt(segments=results["segments"], vtt_file_path=video_data.transcript_path_vtt)
+            self._save_transcription_as_vtt(
+                segments=results["segments"],
+                vtt_file_path=video_data.transcript_path_vtt,
+            )
             logger.info(f"Transcription for {video_data.title} was saved")
 
             # Save the transcription as a text file
-            self._save_transcription_as_text(segments=results["segments"], text_file_path=video_data.transcript_path_text)
+            self._save_transcription_as_text(
+                segments=results["segments"],
+                text_file_path=video_data.transcript_path_text,
+            )
+
+            # Update the video data boolean
+            video_data.transcribed = True
+
             logger.info(f"Transcription for {video_data.title} was saved")
 
             return video_data
         except Exception as e:
             logger.error(f"Error transcribing {video_data.title}: {e}")
             raise
+        finally:
+            logger.info(f"Release GPU memory")
+            self.cleanup()
 
     def _save_transcription_as_vtt(self, segments: list, vtt_file_path: Path) -> Path:
         """
@@ -138,3 +160,11 @@ class SpeechToTextService:
         new_transcript_path = Path(transcript_download_path, video_path.stem + "." + ext)
         logger.debug(f"Created transcript path: {new_transcript_path}")
         return new_transcript_path
+
+    def cleanup(self) -> None:
+        """Release GPU memory"""
+        if self.model:
+            del self.model
+            self.model = None
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()

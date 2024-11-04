@@ -25,7 +25,10 @@ class VideoDescriptionService:
         try:
             description_text: str = self._create_video_description(video_path=video_data.video_path)
 
-            self._save_video_description(description_text=description_text, description_path=self.description_download_path)
+            self._save_video_description(
+                description_text=description_text,
+                description_path=self.description_download_path,
+            )
 
             logger.info(f"Description for {video_data.title} was saved")
 

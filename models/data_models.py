@@ -45,11 +45,14 @@ class VideoData:
     video_url: str
     title: str
     description: str
+    summary_abstractive: str = field(init=False, default="")
+    summary_extractive: str = field(init=False, default="")
     language: str = field(init=False, default="en")
     video_path: Path
     audio_path: Optional[Path] = field(init=False, default=None)
     transcript_path_vtt: Optional[Path] = field(init=False, default=None)
     transcript_path_text: Optional[Path] = field(init=False, default=None)
+    transcribed: bool = field(init=False, default=False)
     description_path: Optional[Path] = field(init=False, default=None)
     segments: List[VideoSegmentData] = field(init=False, default_factory=list)
 
