@@ -176,6 +176,8 @@ class VideoQAInterface:
     def answer_question(self, question: str) -> str:
         """Answer questions about the processed video"""
         try:
+            # Initialize Services
+            self._initialize_services()
             # Initialize QA model
             self.services["chat_model"] = VideoQAChatModel(
                 lancedb_table=self.video_segments_table, embedder=self.services["embedder"], top_k_frames=3
@@ -189,6 +191,8 @@ class VideoQAInterface:
     def summarize_video(self) -> str:
         """Generate a summary of the entire video"""
         try:
+            # Initialize Services
+            self._initialize_services()
             # Initialize summarization service
             self.services["summarizer"] = ExtractiveSummarizationService(
                 summary_download_path=self.base_download_path / "summaries"
@@ -202,7 +206,7 @@ class VideoQAInterface:
             # Generate summary
             video_data = self.services["summarizer"].summarize_video(video_data=video_data)
 
-            return f"Key Takeaways:\n{video_data.summary_extractive}"
+            return f"{video_data.summary_extractive}"
         except Exception as e:
             logger.exception("Error generating summary")
             return f"Error generating summary: {str(e)}"
@@ -252,7 +256,7 @@ class VideoQAInterface:
 
             summarize_button.click(fn=self.summarize_video, inputs=[], outputs=[summary_output])
             clear_button.click(
-                fn=lambda: ("", ""),
+                fn=lambda: ("", "", ""),
                 outputs=[status_output, instructions_output, answer_output],
             )
 

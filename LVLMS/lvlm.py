@@ -222,6 +222,10 @@ class VideoQAChatModel(BaseChatModel):
         # Generate a response
         response = self._generate_response(most_relevant_segment, query)
 
+        # Clean up GPU memory
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         return ChatResult(
             generations=[
                 ChatGeneration(
