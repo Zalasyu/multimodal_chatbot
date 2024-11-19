@@ -1,5 +1,10 @@
 data/*
 .env
 logs/*
+*.log
 *.ods*
 *.png
+multimodal_lancedb2.py
+utils2.py
+lvlm2.py
+bridgetower_embeddings2.py

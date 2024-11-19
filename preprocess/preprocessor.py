@@ -8,7 +8,6 @@ from colorama import Fore, Style
 from tqdm import tqdm
 
 from models.data_models import VideoData, VideoSegmentData
-from utils.helpers import load_video_data
 from utils.logger import logger
 
 
@@ -76,11 +75,8 @@ class Preprocessor:
 
         segments = []
         vtt_content: webvtt.WebVTT = webvtt.read(file=video_data.transcript_path_vtt)
-        logger.debug(f"Displaying WebVTT content: {vtt_content}")
-        logger.debug(f"The number of segments: {len(vtt_content)}")
 
-        for idx, transcript_segment in enumerate(vtt_content):
-            logger.debug(f"Processing segment: {transcript_segment.text}")
+        for idx, transcript_segment in tqdm(enumerate(vtt_content)):
 
             # SKip segment with only one line
             if len(transcript_segment.text.splitlines()) == 1 and not video_data.transcribed:
@@ -101,7 +97,6 @@ class Preprocessor:
 
             # Add the segment to the list
             segments.append((start_ms, mid_ms, end_ms, transcript_segment.text))
-            logger.debug(f"Added segment: {transcript_segment.text}")
 
         # Remove the last segment
         if len(segments) > 0:
@@ -197,11 +192,10 @@ class Preprocessor:
 
         except Exception as e:
             logger.error(f"Error processing video {video_data.video_id}: {str(e)}")
+            raise
 
         finally:
             video.release()
-
-        return video_data
 
     def _maintain_aspect_ratio_resize(
         self,
@@ -300,13 +294,6 @@ if __name__ == "__main__":
         "/home/zalasyu/Documents/projects/multimodal_chatbot/data/interim/video_data/KLLgGg4tmYs.json"
     )
     # Read the video data from the JSON file
-    video_data = load_video_data(absolute_video_data_path)
 
     # Create the base output path if it doesn't exist
     base_output_path = Path(f"/home/zalasyu/Documents/projects/multimodal_chatbot/data/processed/video_frames/")
-
-    # Create an instance of the Preprocessor
-    preprocess = Preprocessor(base_output_path=base_output_path, target_height=350)
-
-    # Extract frames and corresponding metadata from the video
-    preprocess.process_video(video_data=video_data)

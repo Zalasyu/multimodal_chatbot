@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+import language_tool_python
 import torch
 from langchain.chains.summarize import load_summarize_chain
 from langchain.llms import HuggingFacePipeline
@@ -71,6 +72,20 @@ class SummarizationService(ABC):
             self.model = None
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+
+    def _correct_grammer(self, text: str) -> str:
+        """
+        Correct grammar in the text using the LanguageTool API.
+
+        Args:
+            text (str): The text to be corrected.
+
+        Returns:
+            str: The corrected text.
+        """
+        tool = language_tool_python.LanguageTool("en-US")
+        corrected_text = tool.correct(text)
+        return corrected_text
 
 
 class ExtractiveSummarizationService(SummarizationService):
@@ -147,6 +162,9 @@ class ExtractiveSummarizationService(SummarizationService):
                 final_summary += summary[0]["summary_text"]
                 final_summary += " "
 
+            # Correct Grammar
+            final_summary = self._correct_grammer(text=final_summary)
+
             # Add Summary to Video Data
             video_data.summary_extractive = final_summary
 
@@ -187,7 +205,13 @@ class AbstractiveSummarizationService(SummarizationService):
         self.llm = HuggingFacePipeline.from_model_id(
             model_id=model_name,
             task="summarization",
-            model_kwargs={"num_beams": 8, "min_length": 64, "max_length": 256, "do_sample": True, "early_stopping": True},
+            model_kwargs={
+                "num_beams": 8,
+                "min_length": 64,
+                "max_length": 256,
+                "do_sample": True,
+                "early_stopping": True,
+            },
             device=0,
         )
 

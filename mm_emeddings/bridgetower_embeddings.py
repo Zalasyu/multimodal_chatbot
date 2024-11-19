@@ -4,6 +4,7 @@ from typing import List, Tuple
 import numpy as np
 import torch
 from colorama import Fore, Style
+from langchain_core.embeddings import Embeddings
 from PIL import Image
 from sklearn.preprocessing import normalize
 from tqdm import tqdm
@@ -13,7 +14,7 @@ from models.data_models import VideoData, VideoSegmentData
 from utils.logger import logger
 
 
-class BridgeTowerEmbedder:
+class BridgeTowerEmbeddings(Embeddings):
     def __init__(self):
         self.processor = BridgeTowerProcessor.from_pretrained("BridgeTower/bridgetower-base-itm-mlm")
         self.model = BridgeTowerModel.from_pretrained("BridgeTower/bridgetower-base-itm-mlm")
@@ -21,11 +22,11 @@ class BridgeTowerEmbedder:
         self.model.to(self.device)
         self.model.eval()
 
-        # Batch size
-        self.batch_size = 16
-
         # Max Sequence Length
         self.max_seq_length = 512
+
+        # Create an empty image for text-only queries
+        self.empty_image = Image.new("RGB", (576, 576), (128, 128, 128))
 
     def _extract_image_n_caption(self, segment: VideoSegmentData) -> tuple:
         """
@@ -36,12 +37,13 @@ class BridgeTowerEmbedder:
         """
         return (segment.frame, segment.enriched_transcript)
 
-    def _embed_by_batch(self, images: Tuple, captions: Tuple) -> list:
+    def _embed_by_batch(self, images: Tuple, captions: Tuple, batch_size: int = 2) -> list:
         """
         Embed a segment using the BridgeTower model.
         Args:
             images (Tuple): List of images
             captions (Tuple): List of captions
+            batch_size (int, optional): Batch size. Defaults to 2.
         Returns:
             np.ndarray: Embeddings
         """
@@ -51,9 +53,9 @@ class BridgeTowerEmbedder:
         logger.info(f"Embedding {len(captions)} captions")
 
         embeddings_list = []
-        for i in tqdm(range(0, len(images), self.batch_size)):
-            batch_images = images[i : i + self.batch_size]
-            batch_captions = captions[i : i + self.batch_size]
+        for i in tqdm(range(0, len(images), batch_size)):
+            batch_images = images[i : i + batch_size]
+            batch_captions = captions[i : i + batch_size]
 
             # Preprocess inputs
             encoding = self.processor(
@@ -91,7 +93,7 @@ class BridgeTowerEmbedder:
         embeddings_normalized = normalize(embeddings_array, norm="l2")
         return embeddings_normalized
 
-    def embed_video(self, video_data: VideoData) -> VideoData:
+    def embed_video(self, video_data: VideoData, batch_size=2) -> VideoData:
         # Process the video
         video_segments: List[VideoSegmentData] = video_data.get_segments_chronologically()
 
@@ -110,7 +112,7 @@ class BridgeTowerEmbedder:
         images, captions = zip(*results)
 
         # Embed by Batch of segments
-        embeddings_list = self._embed_by_batch(images=images, captions=captions)
+        embeddings_list = self._embed_by_batch(images=images, captions=captions, batch_size=batch_size)
 
         # Concatenate and normalize embeddings
         embeddings_normalized = self._concat_n_norm_embeddings(embeddings=embeddings_list)
@@ -156,32 +158,53 @@ class BridgeTowerEmbedder:
 
         return segment
 
-    def embed_query(self, query: str) -> list:
+    def embed_query(self, text: str) -> list:
         """
         Embed a query.  Here we are using the BridgeTower model.
 
         Args:
-            query (str): _description_
+            text (str): The query to embed
 
         Returns:
-            list: _description_
+            list: Embeddings for the query
         """
-        placeholder_image = Image.new("RGB", (350, 350), color="white")
-        inputs = self.processor(
-            text=[query],
-            images=[placeholder_image],
-            return_tensors="pt",
-            padding=True,
-        )
-        # Move tensors in 'encoding' to the device
-        inputs = {key: value.to(self.device) for key, value in inputs.items()}
+        return self.embed_documents([text])[0]
 
-        with torch.no_grad():
-            model_output = self.model(**inputs)
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """
+        Embed a list of documents.  Here we are using the BridgeTower model.
 
-        embeddings = model_output.pooler_output
-        embeddings = embeddings[0].cpu().numpy()
+        Args:
+            texts (List[str]): The list of texts to embed.
 
-        logger.debug(f"Embeddings shape: {len(embeddings)}")
-        logger.debug(f"Embeddings type: {type(embeddings)}")
-        return embeddings
+        Returns:
+            List[List[float]]: List of embeddings, one for each text
+        """
+
+        for text in texts:
+
+            # Create inputs for BridgeTowerModel with query's text and placeholder image
+            encoding = self.processor(
+                text=text,
+                images=self.empty_image,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=self.max_seq_length,
+                do_rescale=False,
+            )
+
+            # Move to GPU
+            encoding = {key: value.to(self.device) for key, value in encoding.items()}
+
+            with torch.no_grad():
+                model_output = self.model(**encoding)
+
+            # Extract embeddings (pooler_output has shape [batch_size, 1536])
+            embedding = model_output.pooler_output.cpu().numpy().tolist()
+
+            # Release GPU memory
+            del encoding
+            torch.cuda.empty_cache()
+
+        return embedding
