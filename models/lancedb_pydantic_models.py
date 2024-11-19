@@ -21,6 +21,7 @@ class VideoSegmentModel(LanceModel):
     mid_ms: float
     end_ms: float
     embeddings: Vector(1536)  # type: ignore
+    embeddings_from_text: Vector(1536)  # type: ignore
 
 
 # Define VideoData as a LanceModel for use with LanceDB

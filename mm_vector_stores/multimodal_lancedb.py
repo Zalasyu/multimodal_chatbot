@@ -1,13 +1,56 @@
 from typing import Any, List, Optional, Union
 
-from lancedb.pydantic import pydantic_to_schema
+from colorama import Fore, Style
+from lancedb.pydantic import LanceModel, Vector, pydantic_to_schema
 from lancedb.table import Table
 from langchain_community.vectorstores.lancedb import LanceDB
 from langchain_core.embeddings import Embeddings
+from pydantic import Field
+from tqdm import tqdm
 
+from mm_emeddings.openclip_embeddings import OpenClipEmbeddings
 from models.data_models import VideoData, VideoSegmentData
-from models.lancedb_pydantic_models import VideoModel, VideoSegmentModel
+from utils.helpers import enrich_segment_transcripts
 from utils.logger import logger
+
+func = OpenClipEmbeddings()
+
+
+# Define VideoSegmentData as a Pydantic model
+class VideoSegmentModel(LanceModel):
+    id: int
+    parent_video_id: str
+    parent_video_path: str  # Changed from Path to str for compatibility with PyArrow
+    parent_audio_path: str  # Changed from Path to str for compatibility
+    parent_vtt_path: str
+    video_segment_path: str
+    video_segment_transcript_path: str
+    frame_path: str = func.SourceField()
+    transcript: str
+    enriched_transcript: str = func.SourceField()
+    duration_ms: float
+    start_ms: float
+    mid_ms: float
+    end_ms: float
+    embeddings: Vector(func.ndims()) = func.VectorField()  # type: ignore
+    embeddings_from_text: Vector(func.ndims()) = func.VectorField()  # type: ignore
+
+
+# Define VideoData as a LanceModel for use with LanceDB
+class VideoModel(LanceModel):
+    id: str
+    video_url: str
+    title: str
+    description: str
+    summary_abstractive: str = Field(default="")
+    summary_extractive: str = Field(default="")
+    language: str = Field(default="en")
+    video_path: str
+    audio_path: str
+    transcript_path_vtt: str
+    transcript_path_text: str
+    transcribed: bool
+    description_path: Optional[str]
 
 
 class MultiModalLanceDB(LanceDB):
@@ -54,7 +97,7 @@ class MultiModalLanceDB(LanceDB):
     ) -> None:
         super().__init__(
             connection=connection,
-            embedding=embedding,
+            embedding=func,
             uri=uri,
             vector_key=vector_key,
             id_key=id_key,
@@ -100,7 +143,8 @@ class MultiModalLanceDB(LanceDB):
                 "start_ms": 0.0,
                 "mid_ms": 0.0,
                 "end_ms": 0.0,
-                "embeddings": [0.0] * 1536,  # Match your embedding dimension
+                "embeddings": [0.0] * func.ndims(),  # Match your embedding dimension
+                "embeddings_from_text": [0.0] * func.ndims(),  # Match your embedding dimension
             }
 
             empty_video = {
@@ -158,6 +202,8 @@ class MultiModalLanceDB(LanceDB):
         Returns:
             VideoSegmentModel: _description_
         """
+        logger.debug(f"Converting VideoSegmentData to VideoSegmentModel: {segment}")
+        default_embedding = [0.0] * func.ndims()
         return VideoSegmentModel(
             id=segment.video_segment_id,
             parent_video_id=segment.parent_video_id,
@@ -173,7 +219,8 @@ class MultiModalLanceDB(LanceDB):
             start_ms=segment.start_ms,
             mid_ms=segment.mid_ms,
             end_ms=segment.end_ms,
-            embeddings=segment.embeddings,
+            embeddings=default_embedding,
+            embeddings_from_text=segment.embeddings_from_text,
         )
 
     def convert_videos_to_model(self, videos: List[VideoData]) -> List[VideoModel]:
@@ -228,23 +275,37 @@ class MultiModalLanceDB(LanceDB):
         Returns:
             Table: Video segments table
         """
+        logger.debug(f"Loaded embedding function: {func}")
+
+        video_segments: List[VideoSegmentData] = video_data.get_segments_chronologically()
 
         # Create Schema
         table_schema = pydantic_to_schema(VideoSegmentModel)
 
-        # Create Embeddings for Video Segments
-        video_data = self._embedding.embed_video(video_data=video_data)
+        # Enrich transcripts
+        for segment in tqdm(
+            video_segments,
+            total=len(video_segments),
+            desc=f"{Fore.CYAN}Enriching transcripts {Style.RESET_ALL}",
+        ):
+            enrich_segment_transcripts(video_data=video_data, segment=segment)
 
-        # Prepare data
-        video_segments = self.convert_video_segments_to_model(video_data.segments)
+        # Embed
+        for segment in tqdm(
+            video_segments,
+            total=len(video_segments),
+            desc=f"{Fore.CYAN}Embedding {Style.RESET_ALL}",
+        ):
+            segment.embeddings_from_text = func.generate_text_embeddings(segment.enriched_transcript)
 
         # Create table for Video Segments
         video_segments_table: Table = self._connection.create_table(
             name="VideoSegments",
             data=[
                 {
-                    "id": segment.id,
+                    "id": segment.video_segment_id,
                     "embeddings": segment.embeddings,
+                    "embeddings_from_text": segment.embeddings_from_text,
                     "transcript": segment.transcript,
                     "enriched_transcript": segment.enriched_transcript,
                     "parent_video_id": segment.parent_video_id,
@@ -253,7 +314,7 @@ class MultiModalLanceDB(LanceDB):
                     "parent_vtt_path": segment.parent_vtt_path,
                     "video_segment_path": segment.video_segment_path,
                     "video_segment_transcript_path": segment.video_segment_transcript_path,
-                    "frame_path": segment.frame_path,
+                    "frame_path": segment.extracted_frame_path,
                     "start_ms": segment.start_ms,
                     "end_ms": segment.end_ms,
                     "mid_ms": segment.mid_ms,

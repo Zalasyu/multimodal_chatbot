@@ -10,7 +10,7 @@ from langchain_core.outputs.chat_result import ChatResult
 from loguru import logger
 
 from LVLMS.lvlm import VideoQAChatModel
-from mm_emeddings.bridgetower_embeddings import BridgeTowerEmbeddings
+from mm_emeddings.openclip_embeddings import OpenClipEmbeddings
 from mm_vector_stores.multimodal_lancedb import MultiModalLanceDB
 from models.data_models import VideoData
 from models.lancedb_pydantic_models import VideoModel, VideoSegmentModel
@@ -48,7 +48,7 @@ class VideoQAInterface:
         self.services = {
             "scraper": YouTubeScraper(base_download_path=self.base_download_path),
             "preprocessor": Preprocessor(base_output_path=self.base_processed_path, target_height=350),
-            "embedder": BridgeTowerEmbeddings(),
+            "embedder": OpenClipEmbeddings(),
         }
         self.db = MultiModalLanceDB(
             uri="./data/multimodal_lancedb",

@@ -14,9 +14,9 @@ from transformers import (
     T5ForConditionalGeneration,
     pipeline,
 )
-from transformers.pipelines.base import Pipeline
 
 from models.data_models import VideoData
+from preprocess.text_preprocessor import TextPreprocessor
 from utils.logger import logger
 
 
@@ -94,7 +94,7 @@ class ExtractiveSummarizationService(SummarizationService):
         summary_download_path: Path,
         model_name: str = "google-t5/t5-base",
         chunk_size: int = 1024,
-        overlap: int = 0,
+        overlap: int = 256,
     ) -> None:
 
         logger.debug(f"ExtractiveSummarizationService initializing with model_name: {model_name}")
@@ -106,16 +106,19 @@ class ExtractiveSummarizationService(SummarizationService):
         # Assign the device to use for inference
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        # Initialize Text Preprocessor
+        self.text_preprocessor = TextPreprocessor()
+
         # Initialize HuggingFaceEmbeddings
         self.embeddings = HuggingFaceEmbeddings()
 
         # Setup SemanticChunker
         self.semantic_chunker = SemanticChunker(embeddings=self.embeddings, breakpoint_threshold_type="gradient")
 
-        # Load in T5 tokenizer
+        # # Load in T5 tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-        # Load in T5 model
+        # # Load in T5 model
         self.model = T5ForConditionalGeneration.from_pretrained(model_name)
         self.model.to(self.device)  # type: ignore
         self.model.eval()  # type: ignore
@@ -138,22 +141,31 @@ class ExtractiveSummarizationService(SummarizationService):
         try:
             # Load in Raw Transcript Text File
             transcript_text = self._load_transcript(video_data=video_data)
-            logger.debug(f"Transcript Text: {transcript_text}")
+            logger.debug(f"Length of Transcript Text: {len(transcript_text)}")
 
-            # Split Text into Chunks
-            # RecursiveCharacterTextSplitter
-            # transcript_chunks = self.text_splitter.split_text(transcript_text)
+            # NLP Preprocessing
+            # transcript_text = self.text_preprocessor.preprocess_transcript(transcript_text)
+            # logger.debug(f"Length of Preprocessed Transcript Text: {len(transcript_text)}")
+
             # SemanticChunker
             transcript_chunks = self.semantic_chunker.split_text(transcript_text)
 
             # Create Summarization Pipeline
-            summarization_pipeline: Pipeline = pipeline(
+            summarization_pipeline = pipeline(
                 task="summarization",
                 model=self.model,
                 tokenizer=self.tokenizer,
                 device=self.device,
-                model_kwargs={"num_beams": 8},
+                model_kwargs={
+                    "num_beams": 10,
+                    "min_length": 100,
+                    "max_length": 500,
+                    "no_repeat_ngram_size": 3,
+                    "do_sample": True,
+                    "temperature": 0.5,
+                },
             )
+            # final_summary = summarization_pipeline(transcript_text)[0]["summary_text"]
 
             # Summarize Chunks
             final_summary = ""

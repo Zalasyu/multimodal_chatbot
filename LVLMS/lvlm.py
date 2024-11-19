@@ -11,7 +11,7 @@ from pydantic import Field, PrivateAttr
 from sentence_transformers import SentenceTransformer, util
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
-from mm_emeddings.bridgetower_embeddings import BridgeTowerEmbeddings
+from mm_emeddings.openclip_embeddings import OpenClipEmbeddings
 from mm_vector_stores.multimodal_lancedb import MultiModalLanceDB
 from utils.helpers import format_timestamp
 from utils.logger import logger
@@ -149,11 +149,14 @@ class VideoQAChatModel(BaseChatModel):
         """
 
         # Get the query embedding
-        query_embedding = self._embedder.embed_query(query)
+        query_embedding = self._embedder.compute_query_embeddings(query)[0]
 
         # Search for relevant video segments
         results = (
-            self._lancedb_table.search(query_embedding, vector_column_name="embeddings").metric("cosine").limit(3).to_list()
+            self._lancedb_table.search(query_embedding, vector_column_name="embeddings_from_text")
+            .metric("cosine")
+            .limit(3)
+            .to_list()
         )
 
         segments = []
@@ -365,12 +368,9 @@ class VideoQAChatModel(BaseChatModel):
 
 
 if __name__ == "__main__":
-    lancedb_instance = MultiModalLanceDB(
-        uri="/home/zalasyu/Documents/projects/multimodal_chatbot/data/multimodal_lancedb",
-        embedding=BridgeTowerEmbeddings(),
-    )
+    lancedb_instance = MultiModalLanceDB(uri="/home/zalasyu/Documents/projects/multimodal_chatbot/data/multimodal_lancedb")
     video_segments_table = lancedb_instance._connection.open_table("VideoSegments")
-    embedder = BridgeTowerEmbeddings()
+    embedder = OpenClipEmbeddings()
 
     questions = [
         "What was the name of the book that Voltaire is best known for?",

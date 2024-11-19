@@ -1,7 +1,7 @@
 import json
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict, TypeVar
+from typing import Any, Dict, List, TypeVar
 
 from models.data_models import VideoData, VideoSegmentData
 from utils.logger import logger
@@ -174,3 +174,37 @@ def load_video_data(load_path: Path) -> VideoData:
         raise OSError(f"Failed to load video data: {e}")
 
     return video_data
+
+
+def enrich_segment_transcripts(video_data: VideoData, segment: VideoSegmentData) -> VideoSegmentData:
+    """Augment a transcript with transcripts of n-neighbouring segments.
+    Observation: Transcripts of frames extracted from a video are usually fragemented and even with an incomplete sentence.
+    - Such transripts are not meaningful and are not useful for retrieval.
+
+    Naive Solution:
+    - Extract n-neighbouring segments
+    - Concatenate the transcript of the n-neighbouring segments
+
+    Advise:
+    - Should pick an individual n for each video such that updated transcripts
+    say one or two meaningful facts.
+    Args:
+        video_data (VideoData): Video Data of the video
+        segment (VideoSegmentData): Segment Data of the segment
+
+    Returns:
+        VideoSegmentData: Augmented Segment Data
+    """
+
+    # Get n segments before and after the specified segment (Use VideoData)
+    neighbouring_segments: List[VideoSegmentData] = video_data.get_nearest_neighbours(segment_id=segment.video_segment_id, n=12)
+
+    # Extract transcripts of these segments
+    neighbouring_transcripts: list[str] = []
+    for neighbour_segment in neighbouring_segments:
+        neighbouring_transcripts.append(str(neighbour_segment.transcript))
+
+    # Concatenate transcripts
+    segment.enriched_transcript = " ".join(neighbouring_transcripts)
+
+    return segment

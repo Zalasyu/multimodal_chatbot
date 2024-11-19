@@ -25,7 +25,8 @@ class VideoSegmentData:
     start_ms: float
     mid_ms: float
     end_ms: float
-    embeddings: List[float] = field(init=False)
+    embeddings: List[float] = field(init=False, default_factory=list)
+    embeddings_from_text: List[float] = field(init=False, default_factory=list)
 
     def __post_init__(self):
         warnings.warn(
